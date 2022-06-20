@@ -53,6 +53,8 @@ namespace UnitTestProject
 
             Assert.IsTrue(BankHoliday.isWorkingDay(new DateTime(2019, 6, 21)));
             Assert.IsFalse(BankHoliday.isWorkingDay(new DateTime(2019, 6, 22)));
+
+            Assert.IsFalse(BankHoliday.isWorkingDay(new DateTime(2022, 6, 20)));
         }
 
     }

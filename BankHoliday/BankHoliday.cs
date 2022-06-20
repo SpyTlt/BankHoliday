@@ -14,7 +14,7 @@ namespace BankHolidayNS
     /// <summary>
     /// Support for US bank holidays.
     /// </summary>
-    public class BankHoliday
+    public static class BankHoliday
     {
         public enum MarketTime { beforeOpen, open, afterClose }
 
@@ -190,6 +190,7 @@ namespace BankHolidayNS
         public static DateTime getThanksGiving(int year) => fourthThursday(year, 11);
 
         public static DateTime getIndependenceDay(int year) => adjustForWeekendHoliday(new DateTime(year, 7, 4));
+        public static DateTime getJuneteenthDay(int year) => adjustForWeekendHoliday(new DateTime(year, 6, 19));
         public static DateTime getChristmasDay(int year) => adjustForWeekendHoliday(new DateTime(year, 12, 25));
 
         public static DateTime getMemorialDay(int year)
@@ -240,6 +241,7 @@ namespace BankHolidayNS
             holidays.Add(getPresidentDay(year));
             holidays.Add(getGoodFriday(year));
             holidays.Add(getMemorialDay(year));
+            holidays.Add(getJuneteenthDay(year));
             holidays.Add(getIndependenceDay(year));
             holidays.Add(getLaborDay(year));
             holidays.Add(getThanksGiving(year));
