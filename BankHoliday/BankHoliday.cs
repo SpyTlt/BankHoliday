@@ -1,9 +1,9 @@
 ﻿// (c) Vitas Ramanchauskas www.SpyTlt.com, MIT license
-// BankHolidays for US markets. 
+// Bank holidays for U.S. markets.
 // Key methods:
-// nowEst - current DateTime in EST timezone
-// isWorkingday - checks if the market is open on a given date
-// isMarketOpenNow, isMarketOpenAt - check if the market is open right now or at specified DateTime
+// nowEST - current DateTime in EST timezone
+// isWorkingDay - checks if the market is open on a given date
+// isMarketOpenNow, isMarketOpenAt - check if the market is open right now or at a specified DateTime
 
 using System;
 using System.Collections.Concurrent;
