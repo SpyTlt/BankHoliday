@@ -313,7 +313,7 @@ namespace BankHolidayNS
 
 
         /// <summary>
-        /// Is market open at given date and time, weekends, holidays, eearly hours, everything is counted.
+        /// Is market open at given date and time, weekends, holidays, early hours, everything is counted.
         /// </summary>
         /// <param name="estTime">Date and time to check</param>
         /// <returns></returns>
