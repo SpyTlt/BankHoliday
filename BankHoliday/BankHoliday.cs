@@ -88,11 +88,11 @@ namespace BankHolidayNS
         public static readonly TimeSpan normalCloseTime = new TimeSpan(16, 0, 0);
         public static readonly TimeSpan earlyCloseTime = new TimeSpan(13, 0, 0);
 
-/// <summary>
-/// When does the market close on a specified date
-/// </summary>
-/// <param name="_date">Date to check</param>
-/// <returns></returns>
+        /// <summary>
+        /// When does the market close on a specified date
+        /// </summary>
+        /// <param name="_date">Date to check</param>
+        /// <returns>Closing time as TimeSpan</returns>
         public static TimeSpan getCloseTimeForDate(DateTime _date)
         {
             var date = _date.Date;
@@ -104,8 +104,8 @@ namespace BankHolidayNS
                     else
                         return normalCloseTime;
                 case 11:
-                    var thanksGivenAfter = fourthThursday(date.Year, 11).AddDays(1);
-                    return (date == thanksGivenAfter)? earlyCloseTime : normalCloseTime;
+                    var dayAfterThanksgiving = fourthThursday(date.Year, 11).AddDays(1);
+                    return (date == dayAfterThanksgiving) ? earlyCloseTime : normalCloseTime;
 
                 case 12:
                     if (date.Day == 24 && !isWeekend(date.AddDays(1)))
@@ -121,10 +121,10 @@ namespace BankHolidayNS
             getCloseTimeForDate(date.Date).TotalHours < normalCloseTime.TotalHours;
 
         /// <summary>
-        /// Check if the given date is holiday. Returns false for weekends.
+        /// Check if the given date is a holiday. Returns false for weekends.
         /// </summary>
-        /// <param name="date"></param>
-        /// <returns></returns>
+        /// <param name="date">Date to check</param>
+        /// <returns>True if the date is a holiday</returns>
         public static bool isHoliday(DateTime date) => getHolidays(date.Year).Contains(date.Date);
 
         public static bool isHolidayToday => isHoliday(nowEST);
@@ -137,10 +137,10 @@ namespace BankHolidayNS
 
         /// <summary>
         /// The main method to check if the market is open on a given day.
-        /// Checks for weekends, holidays, special days
+        /// Checks for weekends, holidays, and special closed days.
         /// </summary>
         /// <param name="date">Date to check</param>
-        /// <returns></returns>
+        /// <returns>True if the market is open on the given day</returns>
         public static bool isWorkingDay(DateTime date)
         {
             if (isWeekend(date))
@@ -149,11 +149,11 @@ namespace BankHolidayNS
         }
 
         /// <summary>
-        /// Get a list of holidays for several years
+        /// Get a list of holidays for several years.
         /// </summary>
         /// <param name="yearStart">First year to start</param>
         /// <param name="yearCount">Number of years</param>
-        /// <returns></returns>
+        /// <returns>List of holiday dates</returns>
         public static List<DateTime> getHolidays(int yearStart, int yearCount)
         {
             var list = new List<DateTime>();
@@ -164,10 +164,10 @@ namespace BankHolidayNS
 
 
         /// <summary>
-        /// New Year holiday date or null if none 
+        /// New Year holiday date or null if none.
         /// </summary>
         /// <param name="year">Year to check</param>
-        /// <returns></returns>
+        /// <returns>New Year holiday date or null if it falls on Saturday</returns>
         public static DateTime? getNewYear(int year)
         {
             var newYearsDate = new DateTime(year, 1, 1);
@@ -219,37 +219,35 @@ namespace BankHolidayNS
         }
 
 
-        static ConcurrentDictionary<int, HashSet<DateTime>> dicHolidaysByYear = new ConcurrentDictionary<int, HashSet<DateTime>>();
+        private static readonly ConcurrentDictionary<int, HashSet<DateTime>> dicHolidaysByYear = new ConcurrentDictionary<int, HashSet<DateTime>>();
 
         /// <summary>
         /// Get all the holidays for a given year.
         /// </summary>
-        /// <param name="year"></param>
-        /// <returns></returns>
+        /// <param name="year">Year to get holidays for</param>
+        /// <returns>Set of holiday dates</returns>
         public static HashSet<DateTime> getHolidays(int year)
         {
-            if (dicHolidaysByYear.ContainsKey(year))
-                return dicHolidaysByYear[year];
+            return dicHolidaysByYear.GetOrAdd(year, y =>
+            {
+                var holidays = new HashSet<DateTime>();
 
-            var holidays = new HashSet<DateTime>();
+                var newYearsDate = getNewYear(y);
+                if (newYearsDate.HasValue)
+                    holidays.Add(newYearsDate.Value);
 
-            var newYearsDate = getNewYear(year);
-            if(newYearsDate!=null)
-                holidays.Add((DateTime)newYearsDate);
+                holidays.Add(getMartinLutherDay(y));
+                holidays.Add(getPresidentDay(y));
+                holidays.Add(getGoodFriday(y));
+                holidays.Add(getMemorialDay(y));
+                holidays.Add(getJuneteenthDay(y));
+                holidays.Add(getIndependenceDay(y));
+                holidays.Add(getLaborDay(y));
+                holidays.Add(getThanksGiving(y));
+                holidays.Add(getChristmasDay(y));
 
-            holidays.Add(getMartinLutherDay(year));
-            holidays.Add(getPresidentDay(year));
-            holidays.Add(getGoodFriday(year));
-            holidays.Add(getMemorialDay(year));
-            holidays.Add(getJuneteenthDay(year));
-            holidays.Add(getIndependenceDay(year));
-            holidays.Add(getLaborDay(year));
-            holidays.Add(getThanksGiving(year));
-            holidays.Add(getChristmasDay(year));
-
-            dicHolidaysByYear[year] = holidays;
-
-            return holidays;
+                return holidays;
+            });
         }
 
         private static DateTime adjustForWeekendHoliday(DateTime holiday)
@@ -260,10 +258,10 @@ namespace BankHolidayNS
         }
 
         /// <summary>
-        /// Get the next trading date after the specified date
+        /// Get the next trading date after the specified date.
         /// </summary>
         /// <param name="afterDt">Given date</param>
-        /// <returns></returns>
+        /// <returns>Next trading day</returns>
         public static DateTime nextTradingDayAfter(DateTime afterDt)
         {
             var dt = afterDt.Date;
@@ -273,11 +271,11 @@ namespace BankHolidayNS
             return dt;
         }
 
- /// <summary>
- /// get the last trading day before a given date
- /// </summary>
- /// <param name="beforeDt">date to check</param> 
- /// <returns>last trading day before a given date</returns>
+        /// <summary>
+        /// Get the last trading day before a given date
+        /// </summary>
+        /// <param name="beforeDt">Date to check</param> 
+        /// <returns>Last trading day before a given date</returns>
         public static DateTime prevTradingDayBefore(DateTime beforeDt)
         {
             var dt = beforeDt.Date;
@@ -313,10 +311,11 @@ namespace BankHolidayNS
 
 
         /// <summary>
-        /// Is market open at given date and time, weekends, holidays, early hours, everything is counted.
+        /// Checks if the market is open at a given date and time.
+        /// Weekends, holidays, and early hours are all considered.
         /// </summary>
-        /// <param name="estTime">Date and time to check</param>
-        /// <returns></returns>
+        /// <param name="estTime">Date and time to check (in EST)</param>
+        /// <returns>True if the market is open at the specified time</returns>
         public static bool isMarketOpenAt(DateTime estTime)
         {
             if (!isWorkingDay(estTime))
