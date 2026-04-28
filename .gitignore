@@ -338,3 +338,10 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+
+# Claude
+.claude/
+.claudeReq.txt
+
+# Local NuGet pack output
+artifacts/

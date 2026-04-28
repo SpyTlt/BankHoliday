@@ -6,6 +6,29 @@
     <Nullable>disable</Nullable>
     <RootNamespace>BankHoliday</RootNamespace>
     <AssemblyName>BankHoliday</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
   </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>BankHoliday</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Vitas Ramanchauskas</Authors>
+    <Company>SpyTlt</Company>
+    <Copyright>Copyright (c) Vitas Ramanchauskas</Copyright>
+    <Description>Lightweight .NET library for U.S. stock market holidays and trading hours. Detects holidays, weekends, early-close days, DST changes, and provides options-expiration helpers.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/SpyTlt/BankHoliday</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/SpyTlt/BankHoliday.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>stock-market nyse trading holidays options-expiration finance bank-holiday</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
 </Project>

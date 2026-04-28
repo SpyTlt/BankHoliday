@@ -299,5 +299,135 @@ namespace UnitTestProject
             Assert.IsFalse(BankHoliday.isWorkingDay(new DateTime(2025, 11, 27))); // Thanksgiving
             Assert.IsFalse(BankHoliday.isWorkingDay(new DateTime(2025, 12, 25))); // Christmas
         }
+
+        [TestMethod]
+        public void TestJuneteenthBefore2022NotHoliday()
+        {
+            // NYSE began observing Juneteenth as a market holiday in 2022.
+            // For earlier years it should NOT be in the holiday set.
+            Assert.IsFalse(BankHoliday.getHolidays(2019).Contains(new DateTime(2019, 6, 19)));
+            Assert.IsFalse(BankHoliday.getHolidays(2020).Contains(new DateTime(2020, 6, 19)));
+            Assert.IsFalse(BankHoliday.getHolidays(2021).Contains(new DateTime(2021, 6, 18))); // observed Friday for Sat 6/19
+            Assert.IsFalse(BankHoliday.isHoliday(new DateTime(2019, 6, 19)));
+            Assert.IsFalse(BankHoliday.isHoliday(new DateTime(2020, 6, 19)));
+            Assert.IsFalse(BankHoliday.isHoliday(new DateTime(2021, 6, 18)));
+
+            // June 19, 2019 was a Wednesday — without the holiday, it's a working day
+            Assert.IsTrue(BankHoliday.isWorkingDay(new DateTime(2019, 6, 19)));
+
+            // From 2022 onward Juneteenth is a holiday
+            Assert.IsTrue(BankHoliday.getHolidays(2022).Contains(new DateTime(2022, 6, 20))); // observed Mon for Sun 6/19
+            Assert.IsTrue(BankHoliday.getHolidays(2023).Contains(new DateTime(2023, 6, 19)));
+        }
+
+        [TestMethod]
+        public void TestCarterDayOfMourning()
+        {
+            // President Jimmy Carter National Day of Mourning - Jan 9, 2025
+            Assert.IsTrue(BankHoliday.isExtraClosedDate(new DateTime(2025, 1, 9)));
+            Assert.IsFalse(BankHoliday.isWorkingDay(new DateTime(2025, 1, 9)));
+            Assert.IsFalse(BankHoliday.isMarketOpenAt(new DateTime(2025, 1, 9, 12, 0, 0)));
+        }
+
+        [TestMethod]
+        public void TestDateOnlyOverloads()
+        {
+            Assert.IsFalse(BankHoliday.isWorkingDay(new DateOnly(2024, 12, 25))); // Christmas
+            Assert.IsTrue(BankHoliday.isWorkingDay(new DateOnly(2024, 11, 25)));  // Regular Monday
+            Assert.IsTrue(BankHoliday.isHoliday(new DateOnly(2024, 12, 25)));
+            Assert.IsTrue(BankHoliday.isEarlyCloseDay(new DateOnly(2024, 11, 29)));
+        }
+
+        [TestMethod]
+        public void TestOpenTime()
+        {
+            Assert.AreEqual(new TimeSpan(9, 30, 0), BankHoliday.openTime);
+            Assert.AreEqual(new TimeSpan(16, 0, 0), BankHoliday.normalCloseTime);
+            Assert.AreEqual(new TimeSpan(13, 0, 0), BankHoliday.earlyCloseTime);
+        }
+
+        [TestMethod]
+        public void TestCountWorkingDaysBetweenDates()
+        {
+            // Mon Nov 25 - Fri Nov 29 (Thu 11/28 is Thanksgiving)
+            // Trading days strictly between: Tue 26, Wed 27 = 2
+            Assert.AreEqual(2, BankHoliday.countWorkingDaysBetweenDates(new DateTime(2024, 11, 25), new DateTime(2024, 11, 29)));
+
+            // Same week, Mon to Fri: Tue, Wed, Thu = 3 trading days
+            Assert.AreEqual(3, BankHoliday.countWorkingDaysBetweenDates(new DateTime(2024, 11, 18), new DateTime(2024, 11, 22)));
+
+            // Friday to next Monday: nothing strictly between except weekend
+            Assert.AreEqual(0, BankHoliday.countWorkingDaysBetweenDates(new DateTime(2024, 11, 22), new DateTime(2024, 11, 25)));
+        }
+
+        [TestMethod]
+        public void TestThirdFriday()
+        {
+            Assert.AreEqual(new DateTime(2024, 1, 19), BankHoliday.thirdFriday(2024, 1));
+            Assert.AreEqual(new DateTime(2024, 6, 21), BankHoliday.thirdFriday(2024, 6));
+            Assert.AreEqual(new DateTime(2024, 12, 20), BankHoliday.thirdFriday(2024, 12));
+            Assert.AreEqual(new DateTime(2025, 4, 18), BankHoliday.thirdFriday(2025, 4)); // Good Friday
+        }
+
+        [TestMethod]
+        public void TestThirdFridaySmart()
+        {
+            // April 2025: 3rd Friday is April 18 - that's Good Friday, so smart should give Thursday April 17
+            Assert.AreEqual(new DateTime(2025, 4, 17), BankHoliday.thirdFridaySmart(2025, 4));
+
+            // Regular month (no holiday) - smart equals plain third Friday
+            Assert.AreEqual(new DateTime(2024, 1, 19), BankHoliday.thirdFridaySmart(2024, 1));
+        }
+
+        [TestMethod]
+        public void TestThirdFridayAfter()
+        {
+            // Before the third Friday of June -> third Friday of June
+            Assert.AreEqual(new DateTime(2024, 6, 21), BankHoliday.thirdFridayAfter(new DateTime(2024, 6, 1)));
+
+            // After the third Friday of June -> third Friday of July
+            Assert.AreEqual(new DateTime(2024, 7, 19), BankHoliday.thirdFridayAfter(new DateTime(2024, 6, 22)));
+
+            // December rolls to next year January
+            Assert.AreEqual(new DateTime(2025, 1, 17), BankHoliday.thirdFridayAfter(new DateTime(2024, 12, 22)));
+        }
+
+        [TestMethod]
+        public void TestNextFriday()
+        {
+            // From Monday -> upcoming Friday
+            Assert.AreEqual(new DateTime(2024, 11, 29), BankHoliday.nextFriday(new DateTime(2024, 11, 25)));
+
+            // From the same Friday -> same day (>= today behavior)
+            Assert.AreEqual(new DateTime(2024, 11, 29), BankHoliday.nextFriday(new DateTime(2024, 11, 29)));
+
+            // From Saturday -> next Friday
+            Assert.AreEqual(new DateTime(2024, 12, 6), BankHoliday.nextFriday(new DateTime(2024, 11, 30)));
+        }
+
+        [TestMethod]
+        public void TestNextWeeklyOptionsDate()
+        {
+            // Mon Nov 25, 2024 -> Fri Nov 29 (regular working day)
+            Assert.AreEqual(new DateTime(2024, 11, 29), BankHoliday.nextWeeklyOptionsDate(new DateTime(2024, 11, 25), false));
+
+            // From Fri Nov 29 with bWeekAheadIfFriday=true -> Fri Dec 6
+            Assert.AreEqual(new DateTime(2024, 12, 6), BankHoliday.nextWeeklyOptionsDate(new DateTime(2024, 11, 29), true));
+
+            // From Fri Nov 29 with bWeekAheadIfFriday=false -> Fri Nov 29
+            Assert.AreEqual(new DateTime(2024, 11, 29), BankHoliday.nextWeeklyOptionsDate(new DateTime(2024, 11, 29), false));
+
+            // Around Good Friday 2025: Fri April 18 is closed, so options expire Thu April 17
+            Assert.AreEqual(new DateTime(2025, 4, 17), BankHoliday.nextWeeklyOptionsDate(new DateTime(2025, 4, 14), false));
+        }
+
+        [TestMethod]
+        public void TestGetHolidaysReturnsImmutableSet()
+        {
+            // FrozenSet is immutable - should still support standard read operations
+            var holidays = BankHoliday.getHolidays(2024);
+            Assert.IsTrue(holidays.Contains(new DateTime(2024, 12, 25)));
+            Assert.IsFalse(holidays.Contains(new DateTime(2024, 12, 24)));
+        }
     }
 }
