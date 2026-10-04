@@ -1,7 +1,8 @@
 ###############################################################################
 # Set default behavior to automatically normalize line endings.
 ###############################################################################
-* text=auto
+# Line endings (2026-10-04): LF in the repo and in every working tree, on every OS.
+* text=auto eol=lf
 
 ###############################################################################
 # Set default behavior for command prompt diff.
@@ -61,3 +62,7 @@
 #*.PDF   diff=astextplain
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
+
+# Batch files need CRLF: cmd.exe mis-parses labels (goto) in LF batch files.
+*.bat text eol=crlf
+*.cmd text eol=crlf

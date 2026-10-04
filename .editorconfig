@@ -1,0 +1,9 @@
+root = true
+
+# LF + UTF-8 without BOM (2026-10-04); batch files stay CRLF for cmd.exe.
+[*]
+end_of_line = lf
+charset = utf-8
+
+[*.{bat,cmd}]
+end_of_line = crlf
