@@ -8,10 +8,10 @@ A lightweight .NET library for U.S. stock market holidays and trading hours.
 - Check if the market is currently open (or at any specified DateTime)
 - Market open / close times, including early-close days (1:00 PM ET)
 - Compute next / previous trading days
-- All U.S. equity market holidays: New Year's, MLK Day, Presidents Day, Good Friday,
+- All U.S. equity market holidays: New Year's, MLK Day (from 1998), Presidents Day, Good Friday,
   Memorial Day, Juneteenth (from 2022), Independence Day, Labor Day, Thanksgiving, Christmas
-- Special closure dates: 9/11, Hurricane Sandy, presidential funerals,
-  Carter National Day of Mourning (2025-01-09)
+- Special closure dates: 9/11, Hurricane Sandy, presidential funerals (Nixon 1994, Reagan 2004,
+  Ford 2007, G.H.W. Bush 2018), Carter National Day of Mourning (2025-01-09)
 - DST change detection between two dates
 - Options expiration helpers: monthly third-Friday and weekly expirations (holiday-adjusted)
 - `DateOnly` overloads for `isHoliday`, `isWorkingDay`, `isEarlyCloseDay`
@@ -22,7 +22,13 @@ A lightweight .NET library for U.S. stock market holidays and trading hours.
 
 ## Installation
 
-Add a reference to `BankHoliday.dll` or include the project in your solution:
+Install the [NuGet package](https://www.nuget.org/packages/BankHoliday):
+
+```
+dotnet add package BankHoliday
+```
+
+Or include the project in your solution:
 
 ```xml
 <ProjectReference Include="path\to\BankHoliday\BankHoliday.csproj" />
@@ -65,12 +71,17 @@ DateTime monthly = BankHoliday.thirdFridaySmart(2025, 4); // adjusts for Good Fr
 DateTime weekly  = BankHoliday.nextWeeklyOptionsDate(bWeekAheadIfFriday: true);
 ```
 
+Methods without a date argument (`nextFriday()`, `nextWeeklyOptionsDate(bool)`, `thirdFridayCurMonth()`, ...)
+use the current date in the Eastern time zone, not the local machine date.
+
 ## Early Close Days
 
 The library handles early-close days (1:00 PM ET):
 - Day after Thanksgiving
 - Christmas Eve (when Christmas is not on a weekend)
 - July 3rd (when July 4th is not on a weekend)
+
+`isEarlyCloseDay` is true only on a trading day; `getCloseTimeForDate` applies the calendar rule as is.
 
 ## License
 

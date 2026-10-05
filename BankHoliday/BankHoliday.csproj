@@ -12,7 +12,7 @@
 
   <PropertyGroup>
     <PackageId>BankHoliday</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.1.0</Version>
     <Authors>Vitas Ramanchauskas</Authors>
     <Company>SpyTlt</Company>
     <Copyright>Copyright (c) Vitas Ramanchauskas</Copyright>

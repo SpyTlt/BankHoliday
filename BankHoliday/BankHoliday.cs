@@ -26,8 +26,11 @@ public static class BankHoliday
 
     /// <summary>
     /// Eastern Standard Time zone (handles DST automatically).
+    /// Looked up by its IANA id on Linux/macOS: the Windows id resolves there only through ICU,
+    /// which is absent in globalization-invariant mode.
     /// </summary>
-    public static TimeZoneInfo estTimeZone { get; } = TimeZoneInfo.FindSystemTimeZoneById("Eastern Standard Time");
+    public static TimeZoneInfo estTimeZone { get; } =
+        TimeZoneInfo.FindSystemTimeZoneById(OperatingSystem.IsWindows() ? "Eastern Standard Time" : "America/New_York");
 
     /// <summary>
     /// Convert local DateTime to EST timezone.
@@ -38,10 +41,13 @@ public static class BankHoliday
 
     /// <summary>
     /// Convert EST DateTime back to local timezone.
+    /// A time inside the spring-forward gap (e.g. 02:30 on the DST start day) does not exist
+    /// in EST and is moved one hour forward instead of throwing.
     /// </summary>
     /// <param name="dt">DateTime in EST</param>
     /// <returns>Same instant in local timezone</returns>
-    public static DateTime fromEst(DateTime dt) => TimeZoneInfo.ConvertTime(dt, estTimeZone, TimeZoneInfo.Local);
+    public static DateTime fromEst(DateTime dt) =>
+        TimeZoneInfo.ConvertTime(estTimeZone.IsInvalidTime(dt) ? dt.AddHours(1) : dt, estTimeZone, TimeZoneInfo.Local);
 
     /// <summary>
     /// Current DateTime in EST timezone.
@@ -53,6 +59,7 @@ public static class BankHoliday
     /// </summary>
     public static readonly HashSet<DateTime> extraCloseDates =
     [
+        new(1994, 4, 27),                                 // Nixon funeral
         new(2001, 9, 11), new(2001, 9, 12), new(2001, 9, 13), new(2001, 9, 14),
         new(2004, 6, 11),                                 // Reagan funeral
         new(2007, 1, 2),                                  // Ford funeral
@@ -137,10 +144,11 @@ public static class BankHoliday
     public static bool isEarlyCloseDay(DateOnly date) => isEarlyCloseDay(date.ToDateTime(TimeOnly.MinValue));
 
     /// <summary>
-    /// Check if the market closes early on the given date.
+    /// Check if the market closes early on the given date. Always false on a non-trading day.
     /// </summary>
     public static bool isEarlyCloseDay(DateTime date) =>
-        getCloseTimeForDate(date.Date).TotalHours < normalCloseTime.TotalHours;
+        // The calendar rule alone would also mark e.g. Sunday July 3 or a holiday-observed Dec 24 as "early close".
+        isWorkingDay(date) && getCloseTimeForDate(date.Date).TotalHours < normalCloseTime.TotalHours;
 
     /// <summary>
     /// Check if the given date is a market holiday. Returns false for weekends.
@@ -208,7 +216,10 @@ public static class BankHoliday
         };
     }
 
-    /// <summary>Martin Luther King Jr. Day (third Monday of January).</summary>
+    /// <summary>
+    /// Martin Luther King Jr. Day (third Monday of January). The date only: the market is closed on it
+    /// from 1998 (see <see cref="getHolidays(int)"/>).
+    /// </summary>
     public static DateTime getMartinLutherDay(int year) => thirdMonday(year, 1);
 
     /// <summary>Presidents' Day (third Monday of February).</summary>
@@ -260,7 +271,9 @@ public static class BankHoliday
         if (newYearsDate.HasValue)
             holidays.Add(newYearsDate.Value);
 
-        holidays.Add(getMartinLutherDay(year));
+        // NYSE first closed on MLK Day in 1998 (a federal holiday since 1986, a trading day through 1997).
+        if (year >= 1998)
+            holidays.Add(getMartinLutherDay(year));
         holidays.Add(getPresidentDay(year));
         holidays.Add(getGoodFriday(year));
         holidays.Add(getMemorialDay(year));
@@ -356,10 +369,19 @@ public static class BankHoliday
     /// Get the most recent date that should have complete EOD data.
     /// </summary>
     /// <param name="bTodayAlwaysExclude">If true, always exclude today even after the close</param>
-    public static DateTime getLastGoodDateForHistory(bool bTodayAlwaysExclude = false)
+    public static DateTime getLastGoodDateForHistory(bool bTodayAlwaysExclude = false) =>
+        getLastGoodDateForHistory(nowEST, bTodayAlwaysExclude);
+
+    /// <summary>
+    /// Get the most recent date that should have complete EOD data, judged from the given EST time.
+    /// A day's EOD data is complete from that day's close (1:00 PM on an early-close day).
+    /// </summary>
+    /// <param name="estTime">EST date and time to judge from</param>
+    /// <param name="bTodayAlwaysExclude">If true, always exclude the day of estTime even after the close</param>
+    public static DateTime getLastGoodDateForHistory(DateTime estTime, bool bTodayAlwaysExclude = false)
     {
-        var baseDate = nowEST;
-        if (baseDate.Hour >= 16 && !bTodayAlwaysExclude)
+        var baseDate = estTime;
+        if (baseDate.TimeOfDay >= getCloseTimeForDate(baseDate) && !bTodayAlwaysExclude)
             baseDate = baseDate.AddDays(1);
         return prevTradingDayBefore(baseDate);
     }
@@ -401,11 +423,19 @@ public static class BankHoliday
         return isWorkingDay(dt) ? dt : dt.AddDays(-1);
     }
 
-    /// <summary>Third Friday of the current month.</summary>
-    public static DateTime thirdFridayCurMonth() => thirdFriday(DateTime.Now.Year, DateTime.Now.Month);
+    /// <summary>Third Friday of the current month (EST date, not the local machine date).</summary>
+    public static DateTime thirdFridayCurMonth()
+    {
+        var today = nowEST;
+        return thirdFriday(today.Year, today.Month);
+    }
 
-    /// <summary>Monthly options expiration for the current month (holiday-adjusted).</summary>
-    public static DateTime thirdFridayCurMonthSmart() => thirdFridaySmart(DateTime.Now.Year, DateTime.Now.Month);
+    /// <summary>Monthly options expiration for the current month (holiday-adjusted, EST date).</summary>
+    public static DateTime thirdFridayCurMonthSmart()
+    {
+        var today = nowEST;
+        return thirdFridaySmart(today.Year, today.Month);
+    }
 
     /// <summary>
     /// Next third Friday on or after the given date.
@@ -424,8 +454,8 @@ public static class BankHoliday
     public static DateTime nextFriday(DateTime date) =>
         date.AddDays((DayOfWeek.Friday - date.DayOfWeek + 7) % 7);
 
-    /// <summary>Next Friday on or after today.</summary>
-    public static DateTime nextFriday() => nextFriday(DateTime.Today);
+    /// <summary>Next Friday on or after today (EST date, not the local machine date).</summary>
+    public static DateTime nextFriday() => nextFriday(nowEST.Date);
 
     /// <summary>
     /// Next weekly options expiration (Friday, adjusted backward for holidays).
@@ -438,7 +468,8 @@ public static class BankHoliday
         var dt = friday;
         while (!isWorkingDay(dt))
             dt = dt.AddDays(-1);
-        if (date.Date == dt.Date && bWeekAheadIfFriday)
+        // `<=`, not `==`: when date is a holiday Friday the walk-back lands on the Thursday before it, an already expired date.
+        if (bWeekAheadIfFriday && dt.Date <= date.Date)
         {
             dt = friday.AddDays(7);
             while (!isWorkingDay(dt))
@@ -448,8 +479,8 @@ public static class BankHoliday
     }
 
     /// <summary>
-    /// Next weekly options expiration from today.
+    /// Next weekly options expiration from today (EST date, not the local machine date).
     /// </summary>
     public static DateTime nextWeeklyOptionsDate(bool bWeekAheadIfFriday) =>
-        nextWeeklyOptionsDate(DateTime.Today, bWeekAheadIfFriday);
+        nextWeeklyOptionsDate(nowEST.Date, bWeekAheadIfFriday);
 }

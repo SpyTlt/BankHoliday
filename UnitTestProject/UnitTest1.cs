@@ -429,5 +429,106 @@ namespace UnitTestProject
             Assert.IsTrue(holidays.Contains(new DateTime(2024, 12, 25)));
             Assert.IsFalse(holidays.Contains(new DateTime(2024, 12, 24)));
         }
+
+        [TestMethod]
+        public void TestNixonFuneralClosed()
+        {
+            // NYSE closed for President Nixon's funeral - Apr 27, 1994
+            var day = new DateTime(1994, 4, 27);
+            Assert.IsTrue(BankHoliday.isExtraClosedDate(day));
+            Assert.IsFalse(BankHoliday.isWorkingDay(day));
+            Assert.AreEqual(new DateTime(1994, 4, 28), BankHoliday.nextTradingDayAfter(day.AddDays(-1)));
+        }
+
+        [TestMethod]
+        public void TestMlkDayTradingDayBefore1998()
+        {
+            // NYSE first closed on MLK Day in 1998; the MLK Mondays 1994-1997 were trading days
+            foreach (var day in new[] { new DateTime(1994, 1, 17), new DateTime(1995, 1, 16), new DateTime(1996, 1, 15), new DateTime(1997, 1, 20) })
+            {
+                Assert.AreEqual(day, BankHoliday.getMartinLutherDay(day.Year), "the date itself is still computed");
+                Assert.IsFalse(BankHoliday.isHoliday(day), $"{day:yyyy-MM-dd}");
+                Assert.IsTrue(BankHoliday.isWorkingDay(day), $"{day:yyyy-MM-dd}");
+            }
+            Assert.IsTrue(BankHoliday.isHoliday(new DateTime(1998, 1, 19)), "the first MLK closure");
+            Assert.AreEqual(new DateTime(1998, 1, 20), BankHoliday.nextTradingDayAfter(new DateTime(1998, 1, 16)));
+            Assert.AreEqual(new DateTime(1997, 1, 20), BankHoliday.nextTradingDayAfter(new DateTime(1997, 1, 17)));
+        }
+
+        [TestMethod]
+        public void TestEarlyCloseRequiresWorkingDay()
+        {
+            // The raw calendar rule still says 1:00 PM for Sunday July 3, 2022...
+            Assert.AreEqual(13, BankHoliday.getCloseTimeForDate(new DateTime(2022, 7, 3)).TotalHours);
+            // ...but a non-trading day is never an early-close day
+            Assert.IsFalse(BankHoliday.isEarlyCloseDay(new DateTime(2022, 7, 3)));  // Sunday before July 4
+            Assert.IsFalse(BankHoliday.isEarlyCloseDay(new DateTime(2023, 7, 4)));  // the holiday itself
+            Assert.IsTrue(BankHoliday.isEarlyCloseDay(new DateTime(2023, 7, 3)));   // Monday before July 4
+            Assert.IsTrue(BankHoliday.isEarlyCloseDay(new DateTime(2023, 11, 24))); // Friday after Thanksgiving
+        }
+
+        [TestMethod]
+        public void TestGetLastGoodDateForHistory()
+        {
+            var tue = new DateTime(2024, 3, 12);
+            Assert.AreEqual(tue.AddDays(-1), BankHoliday.getLastGoodDateForHistory(tue.AddHours(15).AddMinutes(59)));
+            Assert.AreEqual(tue, BankHoliday.getLastGoodDateForHistory(tue.AddHours(16)));
+            Assert.AreEqual(tue.AddDays(-1), BankHoliday.getLastGoodDateForHistory(tue.AddHours(16), bTodayAlwaysExclude: true));
+
+            // Weekend: Friday whatever the hour
+            var friday = new DateTime(2024, 3, 15);
+            var saturday = new DateTime(2024, 3, 16);
+            Assert.AreEqual(friday, BankHoliday.getLastGoodDateForHistory(saturday.AddHours(10)));
+            Assert.AreEqual(friday, BankHoliday.getLastGoodDateForHistory(saturday.AddHours(17)));
+
+            // Early close (day after Thanksgiving): complete from 1:00 PM; before that Wednesday (Thursday is Thanksgiving)
+            var earlyDay = new DateTime(2024, 11, 29);
+            Assert.AreEqual(earlyDay, BankHoliday.getLastGoodDateForHistory(earlyDay.AddHours(13)));
+            Assert.AreEqual(new DateTime(2024, 11, 27), BankHoliday.getLastGoodDateForHistory(earlyDay.AddHours(12).AddMinutes(59)));
+        }
+
+        [TestMethod]
+        public void TestNextWeeklyOptionsDateOnHolidayFriday()
+        {
+            // Good Friday 2026 is April 3: that week's options expire Thursday April 2
+            var goodFriday = new DateTime(2026, 4, 3);
+            Assert.IsFalse(BankHoliday.isWorkingDay(goodFriday));
+            Assert.AreEqual(new DateTime(2026, 4, 2), BankHoliday.nextWeeklyOptionsDate(goodFriday, false));
+
+            // Week-ahead from the holiday Friday or from the shifted Thursday -> next Friday, not the expired Thursday
+            Assert.AreEqual(new DateTime(2026, 4, 10), BankHoliday.nextWeeklyOptionsDate(goodFriday, true));
+            Assert.AreEqual(new DateTime(2026, 4, 10), BankHoliday.nextWeeklyOptionsDate(new DateTime(2026, 4, 2), true));
+
+            // A regular Friday
+            Assert.AreEqual(new DateTime(2026, 4, 17), BankHoliday.nextWeeklyOptionsDate(new DateTime(2026, 4, 10), true));
+        }
+
+        [TestMethod]
+        public void TestNextWeeklyOptionsDateIgnoresTimeOfDay()
+        {
+            var friday = new DateTime(2024, 3, 15);
+            Assert.AreEqual(new DateTime(2024, 3, 22), BankHoliday.nextWeeklyOptionsDate(friday, true));
+            Assert.AreEqual(new DateTime(2024, 3, 22), BankHoliday.nextWeeklyOptionsDate(friday.AddHours(14).AddMinutes(30), true).Date);
+        }
+
+        [TestMethod]
+        public void TestNoDateOverloadsUseEstDate()
+        {
+            // The overloads without a date use the EST date, not the local machine date
+            // (they differ for several hours a day on a machine outside the Eastern time zone).
+            var estDate = BankHoliday.nowEST.Date;
+            Assert.AreEqual(BankHoliday.nextFriday(estDate), BankHoliday.nextFriday());
+            Assert.AreEqual(BankHoliday.nextWeeklyOptionsDate(estDate, true), BankHoliday.nextWeeklyOptionsDate(true));
+            Assert.AreEqual(BankHoliday.nextWeeklyOptionsDate(estDate, false), BankHoliday.nextWeeklyOptionsDate(false));
+            Assert.AreEqual(BankHoliday.thirdFriday(estDate.Year, estDate.Month), BankHoliday.thirdFridayCurMonth());
+            Assert.AreEqual(BankHoliday.thirdFridaySmart(estDate.Year, estDate.Month), BankHoliday.thirdFridayCurMonthSmart());
+        }
+
+        [TestMethod]
+        public void TestFromEstInsideDstGap()
+        {
+            // 02:30 on Mar 10, 2024 does not exist in EST (clocks jump from 02:00 to 03:00): moved to 03:30, no exception
+            Assert.AreEqual(BankHoliday.fromEst(new DateTime(2024, 3, 10, 3, 30, 0)), BankHoliday.fromEst(new DateTime(2024, 3, 10, 2, 30, 0)));
+        }
     }
 }
